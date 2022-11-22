@@ -14,19 +14,26 @@ def getFileHashMD5(filename):
     return m.hexdigest()
 
 
-conn = sqlite3.connect('Dirs.db')
+conn = sqlite3.connect('Dirsv2.db')
 print("Opened database successfully")
-conn.execute('''DROP TABLE IF EXISTS Dirs''')
-conn.execute('''CREATE  TABLE IF NOT EXISTS Dirs 
-        ("Node"             INTEGER NOT NULL,
+#conn.execute('''DROP TABLE IF EXISTS Dirs''')
+conn.execute('''CREATE  TABLE IF NOT EXISTS Folders 
+        ("folderid"             integer primary key autoincrement,
+        "FolderName"          TEXT,
+        "Path"              TEXT    NOT NULL, 
+        "Parent"            INTEGER NOT NULL,   
+        "size"              BIGINT  DEFAULT 0
+       
+    )''')
+conn.execute('''CREATE  TABLE IF NOT EXISTS Files 
+        ("fileid"             integer primary key autoincrement,
         "Filename"          TEXT,
         "Path"              TEXT    NOT NULL,        
         "hashfile"              TEXT    DEFAULT NULL,
-        "Parent"            INTEGER NOT NULL,
-        "isFolder"          INTEGER DEFAULT NULL,
+        "folderid"            INTEGER NOT NULL,     
         "fileExt"           TEXT DEFAULT NULL,
         "size"              BIGINT  DEFAULT 0,
-        PRIMARY             KEY("Node")
+        PRIMARY             KEY("fileid")
     )''')
 print("Table created successfully")
 
@@ -67,9 +74,11 @@ for (dirpath, dirnames, filenames) in walk(my_path):
             parent_node = key
             break
     # Parameters to execute for folders
-    params = (curr_filename, dirpath, parent_node, fileExt, isFolder)
-    conn.execute('''INSERT INTO Dirs (Filename,Path,Parent,fileExt,isFolder) VALUES (?, ?, ?, ?, ?)''', params)
-    conn.commit()
+    params = (curr_filename, dirpath, parent_node)
+    cursor=conn.cursor()    
+    cursor.execute('''INSERT INTO Folders (FolderName,Path,Parent) VALUES (?, ?, ?)''', params)
+    print(cursor.lastrowid)
+     
     # Iterate over every file inside a folder
     for i in filenames:
         # Starting file iteration - turn isFolder to False.
@@ -90,10 +99,10 @@ for (dirpath, dirnames, filenames) in walk(my_path):
         
         
         filesize = os.path.getsize(dirpath + "\\" + curr_filename)
-        hashfile = getFileHashMD5(dirpath + "\\" + curr_filename)
+       # hashfile = getFileHashMD5(dirpath + "\\" + curr_filename)
         # Parameters to execute in sqlite for files
-        params = (curr_filename, dirpath + "\\" + curr_filename, parent_node, fileExt, isFolder,filesize,hashfile)
-        conn.execute('''INSERT INTO Dirs (Filename,Path,Parent,fileExt,isFolder,size,hashfile)  VALUES (?, ?, ?, ?, ?,?,?)''', params)
+        params = (curr_filename, dirpath + "\\" + curr_filename, parent_node, fileExt, filesize)
+        cursor.execute('''INSERT INTO Files (Filename,Path,folderid,fileExt,size)  VALUES (?, ?, ?, ?, ?)''', params)
         conn.commit()
         # Node iteration to keep up with
         node += 1
